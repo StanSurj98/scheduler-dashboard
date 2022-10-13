@@ -40,15 +40,41 @@ class Dashboard extends Component {
     // Set null to states that will change LATER but necessary for component
     focused: null,
   };
+  
+  // 
+  // ----- LocalStorage for INITIAL state on component mount -----
+  // 
+  componentDidMount() {
+    // check local storage if we have a key:val of "focused"
+    const focused = JSON.parse(localStorage.getItem("focused"));
+    // if truthy, set state as stored value, else keep it null as we've established
+    if (focused) {
+      this.setState({focused});
+    }
+  }
+
+  // Whenever re-render from ANY state change...
+  componentDidUpdate(prevProps, prevState) {
+    // if the FOCUSED state changed... (this line checks to ignore other state changes)
+    if (prevState.focused !== this.state.focused) {
+      // set it as key:val to our localStorage, can use it next time as initial focused state
+      localStorage.setItem("focused", JSON.stringify(this.state.focused));
+    }
+  }
+
+
+  // 
+  // ----- setState Functions -----
+  // 
 
   // Without the arrow function, "this" here refers to "selectPanel" itself (funcs are objects!)
   selectPanel(id) {
-    // "this.setState" -> "access the property called 'setState' of this object called selectPanel"
-    this.setState({
-     focused: id
-    });
+    this.setState(previousState => ({
+      focused: previousState.focused !== null ? null : id
+    }))
   }
-  // Since this would return undefined, we must use fat arrow syntax in our RENDER
+
+  
 
 
   render() {
