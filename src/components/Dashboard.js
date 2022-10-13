@@ -41,8 +41,14 @@ class Dashboard extends Component {
     focused: null,
   };
 
-  // Function for setting focused
-  
+  //!! NOTE !! the usage of arrow function here for "this" 
+  // aka: Class Properties with Arrow Functions
+  selectPanel = (id) => {
+    // () => {} have different rules for "this", the setState now is from Dashboard component
+    this.setState({
+     focused: id
+    });
+   }
 
 
   render() {
@@ -65,7 +71,13 @@ class Dashboard extends Component {
           : data
       ).map((panel) => {
         // THEN render the <Panel /> with that panel properties
-        return <Panel key={panel.id} {...panel} />;
+        return (
+          <Panel 
+            key={panel.id} 
+            {...panel} 
+            onSelect={this.selectPanel} 
+          />
+        );
       });
 
     return <main className={dashboardClasses}>{panels}</main>;
