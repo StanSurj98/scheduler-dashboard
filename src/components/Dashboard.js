@@ -41,14 +41,14 @@ class Dashboard extends Component {
     focused: null,
   };
 
-  //!! NOTE !! the usage of arrow function here for "this" 
-  // aka: Class Properties with Arrow Functions
-  selectPanel = (id) => {
-    // () => {} have different rules for "this", the setState now is from Dashboard component
+  // Without the arrow function, "this" here refers to "selectPanel" itself (funcs are objects!)
+  selectPanel(id) {
+    // "this.setState" -> "access the property called 'setState' of this object called selectPanel"
     this.setState({
      focused: id
     });
-   }
+  }
+  // Since this would return undefined, we must use fat arrow syntax in our RENDER
 
 
   render() {
@@ -75,7 +75,8 @@ class Dashboard extends Component {
           <Panel 
             key={panel.id} 
             {...panel} 
-            onSelect={this.selectPanel} 
+            //  This arrow syntax here fixes the binding problem for 'selectPanel'
+            onSelect={event => this.selectPanel(panel.id)} 
           />
         );
       });
