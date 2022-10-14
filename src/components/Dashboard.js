@@ -1,6 +1,15 @@
 import React, { Component } from "react";
 // Libraries
 import classnames from "classnames";
+import axios from "axios";
+// Helpers
+import {
+  getTotalInterviews,
+  getLeastPopularTimeSlot,
+  getMostPopularDay,
+  getInterviewsPerDay
+ } from "helpers/selectors";
+ import { setInterview } from "helpers/reducers";
 // Components
 import Loading from "./Loading";
 import Panel from "./Panel";
@@ -12,22 +21,22 @@ const data = [
   {
     id: 1,
     label: "Total Interviews",
-    value: 6,
+    getValue: getTotalInterviews,
   },
   {
     id: 2,
     label: "Least Popular Time Slot",
-    value: "1pm",
+    getValue:getLeastPopularTimeSlot,
   },
   {
     id: 3,
     label: "Most Popular Day",
-    value: "Wednesday",
+    getValue: getMostPopularDay,
   },
   {
     id: 4,
     label: "Interviews Per Day",
-    value: "2.3",
+    getValue: getInterviewsPerDay,
   },
 ];
 
@@ -36,13 +45,17 @@ const data = [
 //
 class Dashboard extends Component {
   state = {
-    loading: false,
+    loading: true,
     // Set null to states that will change LATER but necessary for component
     focused: null,
+    // States for the API data
+    days: [],
+    appointments: {},
+    interviewers: {},
   };
   
   // 
-  // ----- LocalStorage for INITIAL state on component mount -----
+  // ----- LocalStorage & API reqs on Initial Mount -----
   // 
   componentDidMount() {
     // check local storage if we have a key:val of "focused"
@@ -51,6 +64,42 @@ class Dashboard extends Component {
     if (focused) {
       this.setState({focused});
     }
+
+    // 
+    // ----- Axios GETs for initial data load -----
+    // 
+    Promise.all([
+      axios.get("/api/days"),
+      axios.get("/api/appointments"),
+      axios.get("/api/interviewers"),
+    ])
+    .then(( [days, appointments, interviewers] ) => { 
+      this.setState({
+        loading: false,
+        days: days.data,
+        appointments: appointments.data,
+        interviewers: interviewers.data
+      });
+    });
+
+    
+    // 
+    // ----- WebSocket -----
+    // 
+    this.socket = new WebSocket(process.env.REACT_APP_WEBSOCKET_URL);
+    // For when client makes interview object, listen to that data from dashboard
+    this.socket.onmessage = (event) => {
+      // Need to parse the incoming socket data (check on network tab)
+      const data = JSON.parse(event.data)
+      
+      if (typeof data === "object" && data.type === "SET_INTERVIEW") {
+        this.setState((prevState) => 
+          setInterview(prevState, data.id, data.interview)
+        );
+      }
+    }
+
+
   }
 
   // Whenever re-render from ANY state change...
@@ -61,7 +110,11 @@ class Dashboard extends Component {
       localStorage.setItem("focused", JSON.stringify(this.state.focused));
     }
   }
-
+  // CleanUp lifecycle
+  componentWillUnmount() {
+    // closing socket
+    this.socket.close();
+  }
 
   // 
   // ----- setState Functions -----
@@ -93,16 +146,17 @@ class Dashboard extends Component {
       (
         this.state.focused
           ? // if focused truthy, filter from the array the panel with matching ID, else all of them
-            data.filter((panel) => this.state.focused === panel.id)
+            data.filter(( panel ) => this.state.focused === panel.id )
           : data
-      ).map((panel) => {
+      ).map(( panel ) => {
         // THEN render the <Panel /> with that panel properties
         return (
           <Panel 
-            key={panel.id} 
-            {...panel} 
+            key={ panel.id } 
+            label={ panel.label }
+            value={ panel.getValue(this.state) } 
             //  This arrow syntax here fixes the binding problem for 'selectPanel'
-            onSelect={event => this.selectPanel(panel.id)} 
+            onSelect={ () => this.selectPanel(panel.id) }
           />
         );
       });
